@@ -29,6 +29,8 @@ func GetLatestReleaseURL(fetchURL string) (string, string, int, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
 		return "", "", 0, errors.New("could not decode results from http request")
 	}
+	fs.Debugf(results, "release assets")
+	fs.Debugf(fetchURL, "fetch URL for assets")
 	if len(results.Assets) < 1 {
 		return "", "", 0, errors.New("could not find an asset in the release. " +
 			"check if asset was successfully added in github release assets")
