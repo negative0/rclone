@@ -119,6 +119,7 @@ type ConfigInfo struct {
 	DownloadHeaders        []*HTTPOption
 	Headers                []*HTTPOption
 	RefreshTimes           bool
+	EnableLogColors        bool
 }
 
 // NewConfig creates a new config with everything set to the default
@@ -156,7 +157,7 @@ func NewConfig() *ConfigInfo {
 	c.MultiThreadStreams = 4
 
 	c.TrackRenamesStrategy = "hash"
-
+	c.EnableLogColors = true
 	return c
 }
 

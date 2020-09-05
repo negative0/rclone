@@ -53,7 +53,6 @@ var (
 // Seed the random number generator
 func init() {
 	rand.Seed(time.Now().UnixNano())
-
 }
 
 // Initialise rclone for testing
@@ -80,6 +79,7 @@ func Initialise() {
 	}
 	fs.Config.LowLevelRetries = *LowLevelRetries
 	fs.Config.UseListR = *UseListR
+	fs.Config.EnableLogColors = false
 }
 
 // Item represents an item for checking

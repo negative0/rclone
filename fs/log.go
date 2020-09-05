@@ -3,6 +3,7 @@ package fs
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -42,6 +43,57 @@ var logLevelToString = []string{
 	LogLevelNotice:    "NOTICE",
 	LogLevelInfo:      "INFO",
 	LogLevelDebug:     "DEBUG",
+}
+
+var logger *logrus.Logger
+
+type MyJSONFormatter struct {
+	logrus.TextFormatter
+}
+
+func (f *MyJSONFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+
+	if f.DisableColors {
+		return []byte(fmt.Sprintf("%s %-6s : %s\n", entry.Time.Format(f.TimestampFormat), strings.ToUpper(entry.Level.String()), entry.Message)), nil
+
+	} else {
+		var levelColor int
+		switch entry.Level {
+		case logrus.DebugLevel, logrus.TraceLevel:
+			levelColor = 34 // blue
+		case logrus.WarnLevel:
+			levelColor = 33 // yellow
+		case logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel:
+			levelColor = 31 // red
+		default:
+			levelColor = 36 // blue
+		}
+		return []byte(fmt.Sprintf("%s \x1b[%dm%-6s\x1b[0m : %s\n", entry.Time.Format(f.TimestampFormat), levelColor, strings.ToUpper(entry.Level.String()), entry.Message)), nil
+
+	}
+
+}
+
+func init() {
+
+	if Config.UseJSONLog {
+		logger = &logrus.Logger{
+			Out:       log.Writer(),
+			Level:     logrus.DebugLevel,
+			Formatter: &logrus.JSONFormatter{},
+		}
+	} else {
+		logger = &logrus.Logger{
+			Out:   log.Writer(),
+			Level: logrus.DebugLevel,
+			Formatter: &MyJSONFormatter{logrus.TextFormatter{
+				FullTimestamp:          true,
+				TimestampFormat:        "2006-01-02 15:04:05",
+				DisableLevelTruncation: true,
+				DisableColors:          !Config.EnableLogColors,
+			}},
+		}
+	}
 }
 
 // String turns a LogLevel into a string
@@ -99,7 +151,7 @@ func (j LogValueItem) String() string {
 func LogPrintf(level LogLevel, o interface{}, text string, args ...interface{}) {
 	out := fmt.Sprintf(text, args...)
 
-	if Config.UseJSONLog {
+	if logger != nil {
 		fields := logrus.Fields{}
 		if o != nil {
 			fields = logrus.Fields{
@@ -112,21 +164,25 @@ func LogPrintf(level LogLevel, o interface{}, text string, args ...interface{}) 
 				fields[item.key] = item.value
 			}
 		}
+		if !Config.UseJSONLog {
+			out = fmt.Sprintf("%v: %s", o, out)
+		}
 		switch level {
 		case LogLevelDebug:
-			logrus.WithFields(fields).Debug(out)
+			logger.WithFields(fields).Debug(out)
 		case LogLevelInfo:
-			logrus.WithFields(fields).Info(out)
+			logger.WithFields(fields).Info(out)
 		case LogLevelNotice, LogLevelWarning:
-			logrus.WithFields(fields).Warn(out)
+			logger.WithFields(fields).Warn(out)
 		case LogLevelError:
-			logrus.WithFields(fields).Error(out)
+			logger.WithFields(fields).Error(out)
 		case LogLevelCritical:
-			logrus.WithFields(fields).Fatal(out)
+			logger.WithFields(fields).Fatal(out)
 		case LogLevelEmergency, LogLevelAlert:
-			logrus.WithFields(fields).Panic(out)
+			logger.WithFields(fields).Panic(out)
 		}
 	} else {
+		// fallback if logrus is null
 		if o != nil {
 			out = fmt.Sprintf("%v: %s", o, out)
 		}
